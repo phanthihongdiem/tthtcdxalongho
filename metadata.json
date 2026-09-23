@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Remix Trung Tâm Học Tập Cộng Đồng Xã Long Hồ",
+  "description": "Cổng thông tin quản lý tài liệu, đăng thông báo và lịch học của Trung tâm Học tập Cộng đồng Xã Long Hồ, Tỉnh Vĩnh Long",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
