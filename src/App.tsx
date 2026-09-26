@@ -62,6 +62,9 @@ const STORAGE_KEYS = {
   COMPLETIONS: 'tt_htcd_long_ho_course_completions_v3',
 };
 
+const GLOBAL_DELETED_SCHEDULE_IDS = new Set(['sch-nuoi-ech-2026', 'sch-nuoi-de-2026', 'sch-02', 'sch-04', 'sch-03', 'sch-01']);
+const GLOBAL_DELETED_ANN_IDS = new Set(['ann-02', 'ann-01']);
+
 export default function App() {
   // Navigation & State
   const [activeTab, setActiveTab] = useState<ActiveTab>('tong-quan');
@@ -71,7 +74,16 @@ export default function App() {
   const [accounts, setAccounts] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
-      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
+      if (saved) {
+        const parsed: UserAccount[] = JSON.parse(saved);
+        // Ensure admin account always exists in accounts list
+        const hasAdmin = parsed.some((a) => a.username?.toLowerCase() === 'admin');
+        if (!hasAdmin) {
+          return [INITIAL_ACCOUNTS[0], ...parsed];
+        }
+        return parsed;
+      }
+      return INITIAL_ACCOUNTS;
     } catch {
       return INITIAL_ACCOUNTS;
     }
@@ -91,7 +103,7 @@ export default function App() {
 
   // Auth Modals State
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register' | 'admin'>('login');
   const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
 
@@ -100,7 +112,9 @@ export default function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.DOCS);
       if (saved) {
-        const parsed: DocumentItem[] = JSON.parse(saved);
+        // Exclude deleted docs if present in existing storage
+        const DELETED_DOC_IDS = new Set(['doc-nuoi-de-2026', 'doc-khuyen-nong-cd-2026', 'doc-01', 'doc-02', 'doc-03', 'doc-06', 'doc-nuoi-ech-2026']);
+        const parsed: DocumentItem[] = JSON.parse(saved).filter((d: DocumentItem) => !DELETED_DOC_IDS.has(d.id));
         const existingIds = new Set(parsed.map((d) => d.id));
         const newInitials = INITIAL_DOCUMENTS.filter((d) => !existingIds.has(d.id));
         return newInitials.length > 0 ? [...newInitials, ...parsed] : parsed;
@@ -114,7 +128,13 @@ export default function App() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ANNOUNCEMENTS);
-      return saved ? JSON.parse(saved) : INITIAL_ANNOUNCEMENTS;
+      if (saved) {
+        const parsed: AnnouncementItem[] = JSON.parse(saved).filter((a: AnnouncementItem) => !GLOBAL_DELETED_ANN_IDS.has(a.id));
+        const existingIds = new Set(parsed.map((a) => a.id));
+        const newInitials = INITIAL_ANNOUNCEMENTS.filter((a) => !existingIds.has(a.id));
+        return newInitials.length > 0 ? [...newInitials, ...parsed] : parsed;
+      }
+      return INITIAL_ANNOUNCEMENTS;
     } catch {
       return INITIAL_ANNOUNCEMENTS;
     }
@@ -124,7 +144,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SCHEDULES);
       if (saved) {
-        const parsed: ClassScheduleItem[] = JSON.parse(saved);
+        const parsed: ClassScheduleItem[] = JSON.parse(saved).filter((s: ClassScheduleItem) => !GLOBAL_DELETED_SCHEDULE_IDS.has(s.id));
         const existingIds = new Set(parsed.map((s) => s.id));
         const newInitials = INITIAL_SCHEDULES.filter((s) => !existingIds.has(s.id));
         return newInitials.length > 0 ? [...newInitials, ...parsed] : parsed;
@@ -382,6 +402,34 @@ export default function App() {
   }, [schedules]);
 
   useEffect(() => {
+    setSchedules((prev) => {
+      const filtered = prev.filter((s) => !GLOBAL_DELETED_SCHEDULE_IDS.has(s.id));
+      if (filtered.length !== prev.length) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(filtered));
+        } catch {
+          // ignore
+        }
+        return filtered;
+      }
+      return prev;
+    });
+
+    setAnnouncements((prev) => {
+      const filtered = prev.filter((a) => !GLOBAL_DELETED_ANN_IDS.has(a.id));
+      if (filtered.length !== prev.length) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(filtered));
+        } catch {
+          // ignore
+        }
+        return filtered;
+      }
+      return prev;
+    });
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(proposals));
     } catch (e) {
@@ -399,7 +447,7 @@ export default function App() {
   };
 
   // Authentication Handlers
-  const handleOpenAuth = (mode: 'login' | 'register' = 'login', reason?: string) => {
+  const handleOpenAuth = (mode: 'login' | 'register' | 'admin' = 'login', reason?: string) => {
     setAuthInitialMode(mode);
     setAuthPromptReason(reason || null);
     setIsAuthOpen(true);
@@ -407,6 +455,31 @@ export default function App() {
 
   const handleRequireAuth = (promptReason: string) => {
     handleOpenAuth('register', promptReason);
+  };
+
+  const handleResetAdminPassword = () => {
+    setAccounts((prev) => {
+      const existingAdmin = prev.find((a) => a.username.toLowerCase() === 'admin');
+      if (existingAdmin) {
+        return prev.map((a) =>
+          a.username.toLowerCase() === 'admin'
+            ? { ...a, password: 'admin123', role: 'admin' as UserRole }
+            : a
+        );
+      }
+      return [INITIAL_ACCOUNTS[0], ...prev];
+    });
+    showToast('Đã khôi phục tài khoản Cán bộ Quản trị về mật khẩu gốc: admin123');
+  };
+
+  const handleUpdatePassword = (id: string, newPassword: string) => {
+    setAccounts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, password: newPassword } : a))
+    );
+    if (currentUser?.id === id) {
+      setCurrentUser((prev) => (prev ? { ...prev, password: newPassword } : null));
+    }
+    showToast('Đã cập nhật mật khẩu thành công!');
   };
 
   const handleLogin = (account: UserAccount) => {
@@ -501,6 +574,25 @@ export default function App() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementItem | null>(null);
   const [selectedSchedule, setSelectedSchedule] = useState<ClassScheduleItem | null>(null);
   const [registerTargetSchedule, setRegisterTargetSchedule] = useState<ClassScheduleItem | null>(null);
+
+  // Active safeguard to ensure deleted items are purged across open tabs & storage
+  useEffect(() => {
+    setSchedules((prev) => {
+      const filtered = prev.filter((s) => !GLOBAL_DELETED_SCHEDULE_IDS.has(s.id));
+      if (filtered.length !== prev.length) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(filtered));
+        } catch {
+          // ignore
+        }
+        return filtered;
+      }
+      return prev;
+    });
+    if (selectedSchedule && GLOBAL_DELETED_SCHEDULE_IDS.has(selectedSchedule.id)) {
+      setSelectedSchedule(null);
+    }
+  }, [selectedSchedule]);
 
   // Document Handlers
   const handleAddDocument = (newDoc: Omit<DocumentItem, 'id' | 'views' | 'downloadsCount'>) => {
@@ -905,6 +997,7 @@ export default function App() {
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
+        onOpenBackup={() => setIsBackupOpen(true)}
         accountsCount={accounts.length}
         onOpenSearch={() => setIsSearchOpen(true)}
         unreadCount={announcements.filter((a) => a.isPinned).length}
@@ -923,6 +1016,7 @@ export default function App() {
             isAdmin={isAdmin}
             currentUser={currentUser}
             onRequireAuth={handleRequireAuth}
+            onOpenAuth={handleOpenAuth}
             setActiveTab={setActiveTab}
             onOpenAddDoc={() => {
               setActiveTab('tai-lieu');
@@ -1084,14 +1178,16 @@ export default function App() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Authentication Modal (Login / Register) */}
+      {/* Authentication Modal (Login / Register / Admin) */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onLogin={handleLogin}
         onRegister={handleRegister}
+        accounts={accounts}
         initialMode={authInitialMode}
         promptReason={authPromptReason}
+        onResetAdminPassword={handleResetAdminPassword}
       />
 
       {/* Admin User Management Modal */}
@@ -1103,6 +1199,7 @@ export default function App() {
         onDeleteAccount={handleDeleteAccount}
         onUpdateRole={handleUpdateRole}
         onAddAccount={handleAddAccountByAdmin}
+        onUpdatePassword={handleUpdatePassword}
       />
 
       {/* Data Backup & Restore Modal */}
@@ -1122,6 +1219,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenBackup={() => setIsBackupOpen(true)}
         isAdmin={isAdmin}
+        onOpenAuth={handleOpenAuth}
       />
     </div>
   );

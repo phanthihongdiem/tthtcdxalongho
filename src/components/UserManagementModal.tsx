@@ -12,7 +12,9 @@ import {
   Trash2, 
   CheckCircle2,
   Lock,
-  Plus
+  Plus,
+  KeyRound,
+  RotateCcw
 } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
 import { HAMLETS } from '../data/initialData';
@@ -25,6 +27,7 @@ interface UserManagementModalProps {
   onDeleteAccount: (id: string) => void;
   onUpdateRole: (id: string, newRole: UserRole) => void;
   onAddAccount: (acc: Omit<UserAccount, 'id' | 'createdAt'>) => void;
+  onUpdatePassword?: (id: string, newPassword: string) => void;
 }
 
 export const UserManagementModal: React.FC<UserManagementModalProps> = ({
@@ -35,10 +38,14 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   onDeleteAccount,
   onUpdateRole,
   onAddAccount,
+  onUpdatePassword,
 }) => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [passwordModalAccount, setPasswordModalAccount] = useState<UserAccount | null>(null);
+  const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   // New user form state
   const [formName, setFormName] = useState('');
@@ -247,6 +254,85 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           </form>
         )}
 
+        {/* Action Notice */}
+        {actionNotice && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{actionNotice}</span>
+            </div>
+            <button
+              onClick={() => setActionNotice(null)}
+              className="text-stone-400 hover:text-stone-600 text-[11px]"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Change Password Dialog */}
+        {passwordModalAccount && (
+          <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl space-y-2.5 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-blue-700" />
+                Đổi mật khẩu cho: {passwordModalAccount.fullName} ({passwordModalAccount.username})
+              </span>
+              <button
+                onClick={() => {
+                  setPasswordModalAccount(null);
+                  setNewPasswordVal('');
+                }}
+                className="text-stone-400 hover:text-stone-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Nhập mật khẩu mới (tối thiểu 4 ký tự)"
+                value={newPasswordVal}
+                onChange={(e) => setNewPasswordVal(e.target.value)}
+                className="flex-1 px-3 py-1.5 text-xs border border-stone-300 rounded-lg bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (newPasswordVal.trim().length < 4) {
+                    alert('Mật khẩu cần tối thiểu 4 ký tự!');
+                    return;
+                  }
+                  if (onUpdatePassword) {
+                    onUpdatePassword(passwordModalAccount.id, newPasswordVal.trim());
+                    setActionNotice(`Đã đổi mật khẩu cho ${passwordModalAccount.fullName} thành công.`);
+                  }
+                  setPasswordModalAccount(null);
+                  setNewPasswordVal('');
+                }}
+                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg text-xs"
+              >
+                Xác Nhận Đổi
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultPass = passwordModalAccount.role === 'admin' ? 'admin123' : '123456';
+                  if (onUpdatePassword) {
+                    onUpdatePassword(passwordModalAccount.id, defaultPass);
+                    setActionNotice(`Đã đặt lại mật khẩu cho ${passwordModalAccount.fullName} về "${defaultPass}".`);
+                  }
+                  setPasswordModalAccount(null);
+                  setNewPasswordVal('');
+                }}
+                className="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg text-xs"
+              >
+                Đặt về mặc định ({passwordModalAccount.role === 'admin' ? 'admin123' : '123456'})
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* User Accounts Table */}
         <div className="border border-stone-200 rounded-xl overflow-hidden">
           <div className="overflow-x-auto max-h-80">
@@ -309,31 +395,45 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       </td>
 
                       <td className="py-2.5 px-3 text-right">
-                        {!isCurrent && acc.username !== 'admin' && (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => {
-                                const newRole = acc.role === 'admin' ? 'user' : 'admin';
-                                onUpdateRole(acc.id, newRole);
-                              }}
-                              className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded text-[10px] font-semibold transition-colors"
-                              title={acc.role === 'admin' ? 'Hạ quyền xuống Người dân' : 'Nâng quyền lên Cán bộ Admin'}
-                            >
-                              {acc.role === 'admin' ? 'Chuyển Người dân' : 'Cấp quyền Admin'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Xóa tài khoản của "${acc.fullName}"?`)) {
-                                  onDeleteAccount(acc.id);
-                                }
-                              }}
-                              className="p-1 text-stone-400 hover:text-red-600 rounded transition-colors"
-                              title="Xóa tài khoản"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Change / Reset password button */}
+                          <button
+                            onClick={() => {
+                              setPasswordModalAccount(acc);
+                              setNewPasswordVal('');
+                            }}
+                            className="p-1 text-stone-500 hover:text-blue-700 hover:bg-stone-100 rounded transition-colors"
+                            title={`Đổi hoặc đặt lại mật khẩu cho ${acc.fullName}`}
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                          </button>
+
+                          {!isCurrent && acc.username !== 'admin' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  const newRole = acc.role === 'admin' ? 'user' : 'admin';
+                                  onUpdateRole(acc.id, newRole);
+                                }}
+                                className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded text-[10px] font-semibold transition-colors"
+                                title={acc.role === 'admin' ? 'Hạ quyền xuống Người dân' : 'Nâng quyền lên Cán bộ Admin'}
+                              >
+                                {acc.role === 'admin' ? 'Chuyển Người dân' : 'Cấp quyền Admin'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Xóa tài khoản của "${acc.fullName}"?`)) {
+                                    onDeleteAccount(acc.id);
+                                  }
+                                }}
+                                className="p-1 text-stone-400 hover:text-red-600 rounded transition-colors"
+                                title="Xóa tài khoản"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

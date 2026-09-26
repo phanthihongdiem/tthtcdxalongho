@@ -18,9 +18,10 @@ interface FooterProps {
   setActiveTab: (tab: ActiveTab) => void;
   onOpenBackup: () => void;
   isAdmin: boolean;
+  onOpenAuth?: (mode?: 'login' | 'register' | 'admin') => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackup, isAdmin }) => {
+export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackup, isAdmin, onOpenAuth }) => {
   return (
     <footer className="bg-stone-900 text-stone-300 mt-16 border-t border-stone-800 text-xs">
       {/* Main Footer Container */}
@@ -106,12 +107,23 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackup, isAd
 
         {/* Column 3: Administration & Backup */}
         <div className="space-y-3">
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-            Quản Trị Hệ Thống
+          <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+            <span>Quản Trị Hệ Thống</span>
           </h4>
           <p className="text-stone-400 text-xs">
             Dành cho cán bộ phụ trách quản lý tài liệu, đưa thông báo và lập lịch giảng dạy.
           </p>
+
+          {!isAdmin && onOpenAuth && (
+            <button
+              onClick={() => onOpenAuth('admin')}
+              className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-bold shadow-xs"
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-200" />
+              <span>Đăng Nhập Cán Bộ Quản Trị</span>
+            </button>
+          )}
 
           <button
             onClick={onOpenBackup}

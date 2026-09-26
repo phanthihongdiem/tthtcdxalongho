@@ -22,7 +22,8 @@ import {
   Video,
   MonitorPlay,
   Radio,
-  Award
+  Award,
+  ShieldCheck
 } from 'lucide-react';
 import { DocumentItem, AnnouncementItem, ClassScheduleItem, ActiveTab, UserAccount } from '../types';
 import { Lock } from 'lucide-react';
@@ -42,6 +43,7 @@ interface OverviewTabProps {
   onSelectAnnouncement: (ann: AnnouncementItem) => void;
   onSelectSchedule: (sch: ClassScheduleItem) => void;
   onRegisterSchedule: (sch: ClassScheduleItem) => void;
+  onOpenAuth?: (mode?: 'login' | 'register' | 'admin') => void;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -59,6 +61,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   onSelectAnnouncement,
   onSelectSchedule,
   onRegisterSchedule,
+  onOpenAuth,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -136,8 +139,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
               <span className="text-amber-200/80 text-[11px] font-medium mr-1">Chủ đề gợi ý:</span>
               {[
                 { label: 'Sầu riêng Cadimi', query: 'Cadimi' },
-                { label: 'Chăn nuôi dê', query: 'nuôi dê' },
-                { label: 'Nuôi ếch bể bạt', query: 'nuôi ếch' },
+                { label: 'Nuôi ốc bươu đen', query: 'ốc bươu' },
+                { label: 'Bảo vệ thực vật', query: 'thực vật' },
                 { label: 'Lớp OneAI', query: 'OneAI' },
                 { label: 'VNeID & Dịch vụ công', query: 'VNeID' },
               ].map((item) => (
@@ -152,9 +155,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             </div>
           </div>
 
-          {/* Admin Shortcuts */}
-          {isAdmin && (
-            <div className="pt-2 flex items-center gap-2 border-t border-white/15">
+          {/* Admin Shortcuts / Admin Login Prompt */}
+          {isAdmin ? (
+            <div className="pt-2 flex items-center gap-2 border-t border-white/15 flex-wrap">
               <span className="text-xs text-amber-200 font-semibold">Tác vụ Cán bộ:</span>
               <button
                 onClick={onOpenAddDoc}
@@ -181,6 +184,21 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 + Mở lớp học mới
               </button>
             </div>
+          ) : (
+            onOpenAuth && (
+              <div className="pt-2 flex items-center justify-between border-t border-white/15 flex-wrap gap-2 text-xs">
+                <span className="text-white/80 text-[11px]">
+                  Cán bộ quản trị cần đăng tài liệu hoặc điều hành lớp học?
+                </span>
+                <button
+                  onClick={() => onOpenAuth('admin')}
+                  className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-900 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-xs"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-900" />
+                  <span>Đăng Nhập Cán Bộ Quản Trị</span>
+                </button>
+              </div>
+            )
           )}
         </div>
 

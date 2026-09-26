@@ -18,7 +18,8 @@ import {
   Users, 
   ChevronDown,
   Video,
-  Award
+  Award,
+  Database
 } from 'lucide-react';
 import { ActiveTab, UserAccount } from '../types';
 
@@ -26,9 +27,10 @@ interface HeaderProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   currentUser: UserAccount | null;
-  onOpenAuth: (mode?: 'login' | 'register') => void;
+  onOpenAuth: (mode?: 'login' | 'register' | 'admin') => void;
   onLogout: () => void;
   onOpenUserManagement?: () => void;
+  onOpenBackup?: () => void;
   accountsCount?: number;
   onOpenSearch?: () => void;
   unreadCount?: number;
@@ -44,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onLogout,
   onOpenUserManagement,
+  onOpenBackup,
   accountsCount = 0,
   unreadCount = 0,
   hasLiveClass = false,
@@ -184,12 +187,25 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   )}
 
+                  {isAdmin && onOpenBackup && (
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        onOpenBackup();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition-colors font-medium"
+                    >
+                      <Database className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Sao lưu & Phục hồi dữ liệu</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setUserDropdownOpen(false);
                       onLogout();
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-semibold"
+                    className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-semibold border-t border-stone-100"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Đăng xuất tài khoản</span>
@@ -199,15 +215,29 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
+              {/* Dedicated Admin Login Button */}
+              <button
+                onClick={() => onOpenAuth('admin')}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-xs transition-colors border border-amber-500/50"
+                id="btn-header-admin-login"
+                title="Đăng nhập dành cho Cán bộ Quản trị hệ thống (Toàn quyền)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-200" />
+                <span>Cán Bộ Quản Trị</span>
+              </button>
+
+              {/* Resident Login Button */}
               <button
                 onClick={() => onOpenAuth('login')}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow-xs transition-colors"
                 id="btn-header-login"
-                title="Đăng nhập cán bộ hoặc người dân để xem và tải tài liệu"
+                title="Đăng nhập tài khoản bà con hoặc học viên"
               >
                 <LogIn className="w-3.5 h-3.5 text-amber-200" />
-                <span>Đăng Nhập</span>
+                <span className="hidden sm:inline">Học Viên /</span> Người Dân
               </button>
+
+              {/* Register Button */}
               <button
                 onClick={() => onOpenAuth('register')}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg border border-stone-200 transition-colors"
@@ -315,25 +345,39 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             {!currentUser && (
-              <div className="flex gap-2 p-2 bg-stone-100 rounded-xl mb-1">
+              <div className="flex flex-col gap-2 p-2 bg-stone-100 rounded-xl mb-1">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    onOpenAuth('login');
+                    onOpenAuth('admin');
                   }}
-                  className="flex-1 py-2 text-center text-xs font-bold bg-blue-700 text-white rounded-lg"
+                  className="w-full py-2 px-3 text-center text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center justify-center gap-2 shadow-xs"
                 >
-                  Đăng Nhập
+                  <ShieldCheck className="w-4 h-4 text-amber-200" />
+                  <span>Đăng Nhập Cán Bộ Quản Trị</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onOpenAuth('register');
-                  }}
-                  className="flex-1 py-2 text-center text-xs font-bold bg-white text-stone-800 border border-stone-300 rounded-lg"
-                >
-                  Đăng Ký
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenAuth('login');
+                    }}
+                    className="flex-1 py-2 text-center text-xs font-bold bg-blue-700 text-white rounded-lg flex items-center justify-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Người Dân</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenAuth('register');
+                    }}
+                    className="flex-1 py-2 text-center text-xs font-bold bg-white text-stone-800 border border-stone-300 rounded-lg flex items-center justify-center gap-1.5"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 text-blue-700" />
+                    <span>Đăng Ký</span>
+                  </button>
+                </div>
               </div>
             )}
 
